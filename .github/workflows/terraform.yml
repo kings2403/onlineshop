@@ -24,12 +24,37 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
+    - name: Set up AWS CLI
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.REGION }}
 
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
+    
+      - name: Create s3 bucket
+        run: aws s3 nb s3://kings-onlineshop-backend
+
+      - name: Create eks cluster
+        uses: hashicorp/setup-terraform@v2
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+          terraform -chdir-terraform/ init
+          terraform -chdir-terraform apply --auto-approve
+
+      - name: install kubectl
+        uses: azure/setup-kubectl@v3   
+
+      - name: install helm
+        uses: azure/setup-helm@v4.2.0    
+
+      - name: update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region us-east-1 --name kings-sockshop
+          kubectl create namespace sock-shop
+
+      - name: add helm charts
+        run: |
+        helm repo add ingress https://kubernetes.github.io/ingress-nginx
+        helm repo add prometheus https://prometheus-community.github.io/helm-charts
+        helm repo add jetstack    
+
